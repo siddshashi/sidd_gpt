@@ -1,11 +1,11 @@
 use sidd_gpt::Data;
 use std::process;
-
-const PATH_TO_DATA: &str = "text/tinyshakespeare.txt";
+use std::env;
 
 fn main() {
-    // TODO: PATH_TO_DATA should be CL arg
-    let _data = Data::parse(PATH_TO_DATA).unwrap_or_else(|err| {
+    let args: Vec<String> = env::args().collect();
+
+    let _data = Data::parse(&args[0]).unwrap_or_else(|err| {
         eprintln!("problem parsing data: {err}");
         process::exit(1);
     });
