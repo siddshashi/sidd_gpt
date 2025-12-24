@@ -1,22 +1,32 @@
 // linear affine transformation
-use ndarray::{Array1, Array2};
+use ndarray::{array, Array1, Array2};
 
 mod helpers;
 
 pub struct Linear {
     weight: Array2<f32>,
     bias: Array1<f32>,
+    // also need cached input
 }
 
 impl Linear {
     pub fn new(din: usize, dout: usize, is_ffn: bool) -> Linear {
+        /* Creates and returns Linear struct with weight matrix (dout, din) 
+         * and bias vector (dout,) */
         let weight: Array2<f32> = helpers::initialize_weights(din, dout, is_ffn);
         let bias: Array1<f32> = Array1::<f32>::zeros(dout);
 
         Linear { weight , bias }
     }
 
-    // forward method, applies Wx + b
+    pub fn forward_batch(&self, x: &Array2<f32>) -> Array2<f32> {
+        /* Applies weight and bias for entire batch input x.
+         * x: (B, din), weight: (dout, din), bias: (dout,), output: (B, dout)
+         * output = x * At + b */
+
+        // self.cached_input = x
+        x.dot(&self.weight.t()) + &self.bias
+    }
     
     // backprop method, applies gradient to change weight, bias with optimizer
 }
@@ -29,7 +39,7 @@ mod tests {
     fn test_new_dims() {
         let lin: Linear = Linear::new(2, 3, true);
 
-        assert_eq!(lin.weight.shape(), &[2, 3]);
+        assert_eq!(lin.weight.shape(), &[3, 2]);
         assert_eq!(lin.bias.shape(), &[3]);
     }
 
@@ -76,5 +86,34 @@ mod tests {
 
         assert!(mean.abs() < 0.01);
         assert!((variance - expected_variance).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_forward_batch() {
+        let linear = Linear {
+            weight: array![[1.0, 4.0],
+                           [2.0, 5.0],
+                           [3.0, 6.0]],
+            bias: array![1.0, 2.0, 3.0],
+        };
+
+        let x = array![[0.0, 0.0],
+                       [0.0, 1.0],
+                       [1.0, 0.0],
+                       [1.0, 1.0]];
+
+        let output = linear.forward_batch(&x);
+
+        let expected_output = array![[1.0, 2.0, 3.0],
+                               [5.0, 7.0, 9.0],
+                               [2.0, 4.0, 6.0],
+                               [6.0, 9.0, 12.0]];
+        for i in 0..4 {
+            for j in 0..3 {
+                assert!((output[[i, j]] - expected_output[[i, j]]).abs() < 1e-5,
+                    "Mismatch at [{}, {}]: got {}, expected {}", 
+                    i, j, output[[i, j]], expected_output[[i, j]]);
+            }
+        }
     }
 }
